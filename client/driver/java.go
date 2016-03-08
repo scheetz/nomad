@@ -46,7 +46,6 @@ type javaHandle struct {
 	userPid         int
 	executor        executor.Executor
 	isolationConfig *cstructs.IsolationConfig
-	checks          map[string]Check
 
 	taskDir     string
 	allocDir    *allocdir.AllocDir
@@ -201,6 +200,10 @@ func (d *JavaDriver) Start(ctx *ExecContext, task *structs.Task) (DriverHandle, 
 	return h, nil
 }
 
+func (e *JavaDriver) SupportedChecks() []string {
+	return []string{"script"}
+}
+
 // cgroupsMounted returns true if the cgroups are mounted on a system otherwise
 // returns false
 func (d *JavaDriver) cgroupsMounted(node *structs.Node) bool {
@@ -289,12 +292,8 @@ func (h *javaHandle) WaitCh() chan *cstructs.WaitResult {
 }
 
 // RunCheck runs a check with a specific ID and returns the check result
-func (h *javaHandle) RunCheck(checkID string) (*CheckResult, error) {
-	ch, ok := h.checks[checkID]
-	if !ok {
-		return nil, fmt.Errorf("error retreiving check with ID: %v", checkID)
-	}
-	return ch.Run()
+func (h *javaHandle) RunCheck(checkID string) (*cstructs.CheckResult, error) {
+	return h.executor.RunCheck(checkID)
 }
 
 func (h *javaHandle) Update(task *structs.Task) error {

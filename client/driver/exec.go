@@ -39,7 +39,6 @@ type execHandle struct {
 	pluginClient    *plugin.Client
 	executor        executor.Executor
 	isolationConfig *cstructs.IsolationConfig
-	checks          map[string]Check
 	userPid         int
 	allocDir        *allocdir.AllocDir
 	killTimeout     time.Duration
@@ -47,6 +46,17 @@ type execHandle struct {
 	waitCh          chan *cstructs.WaitResult
 	doneCh          chan struct{}
 	version         string
+}
+
+type ExecScriptCheck struct {
+	Cmd  string
+	Args []string
+
+	executor executor.Executor
+}
+
+func (e *ExecScriptCheck) Run() (*cstructs.CheckResult, error) {
+	return nil, nil
 }
 
 // NewExecDriver is used to create a new exec driver
@@ -149,6 +159,10 @@ func (d *ExecDriver) Start(ctx *ExecContext, task *structs.Task) (DriverHandle, 
 	}
 	go h.run()
 	return h, nil
+}
+
+func (e *ExecDriver) SupportedChecks() []string {
+	return []string{"script"}
 }
 
 type execId struct {
@@ -260,12 +274,8 @@ func (h *execHandle) Kill() error {
 }
 
 // RunCheck runs a check with a specific ID and returns the check result
-func (h *execHandle) RunCheck(checkID string) (*CheckResult, error) {
-	ch, ok := h.checks[checkID]
-	if !ok {
-		return nil, fmt.Errorf("error retreiving check with ID: %v", checkID)
-	}
-	return ch.Run()
+func (h *execHandle) RunCheck(checkID string) (*cstructs.CheckResult, error) {
+	return h.executor.RunCheck(checkID)
 }
 
 func (h *execHandle) run() {

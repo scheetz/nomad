@@ -3,6 +3,10 @@
 package executor
 
 import (
+	"os/exec"
+)
+
+import (
 	cgroupConfig "github.com/opencontainers/runc/libcontainer/configs"
 )
 
@@ -28,4 +32,7 @@ func (e *UniversalExecutor) applyLimits(pid int) error {
 
 func (e *UniversalExecutor) configureIsolation() error {
 	return nil
+}
+
+func (e *ExecScriptCheck) setChroot(cmd *exec.Cmd) {
 }

@@ -409,7 +409,6 @@ func (c *ConsulService) filterConsulChecks(chks map[string]*consul.AgentCheck) m
 		}
 	}
 	return nomadChecks
-
 }
 
 // printLogMessage prints log messages only when the node attributes have consul

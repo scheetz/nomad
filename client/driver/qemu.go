@@ -47,7 +47,7 @@ type qemuHandle struct {
 	pluginClient *plugin.Client
 	userPid      int
 	executor     executor.Executor
-	checks       map[string]Check
+	checks       map[string]cstructs.Check
 	allocDir     *allocdir.AllocDir
 	killTimeout  time.Duration
 	logger       *log.Logger
@@ -236,6 +236,10 @@ func (d *QemuDriver) Start(ctx *ExecContext, task *structs.Task) (DriverHandle, 
 	return h, nil
 }
 
+func (e *QemuDriver) SupportedChecks() []string {
+	return []string{"script"}
+}
+
 type qemuId struct {
 	Version      string
 	KillTimeout  time.Duration
@@ -334,7 +338,7 @@ func (h *qemuHandle) Kill() error {
 }
 
 // RunCheck runs a check with a specific ID and returns the check result
-func (h *qemuHandle) RunCheck(checkID string) (*CheckResult, error) {
+func (h *qemuHandle) RunCheck(checkID string) (*cstructs.CheckResult, error) {
 	ch, ok := h.checks[checkID]
 	if !ok {
 		return nil, fmt.Errorf("error retreiving check with ID: %v", checkID)

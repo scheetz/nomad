@@ -56,6 +56,8 @@ type Driver interface {
 
 	// Open is used to re-open a handle to a task
 	Open(ctx *ExecContext, handleID string) (DriverHandle, error)
+
+	SupportedChecks() []string
 }
 
 // DriverContext is a means to inject dependencies such as loggers, configs, and
@@ -102,20 +104,6 @@ func (d *DriverContext) KillTimeout(task *structs.Task) time.Duration {
 	return d.config.MaxKillTimeout
 }
 
-// CheckBufSize is the size of the check output result
-var CheckBufSize = 4 * 1024
-
-// CheckResult encapsulates the result of a check
-type CheckResult struct {
-	ExitCode  int // ExitCode is the exit code of the check
-	Output    string
-	Timestamp time.Time
-}
-
-type Check interface {
-	Run() (*CheckResult, error)
-}
-
 // DriverHandle is an opaque handle into a driver used for task
 // manipulation
 type DriverHandle interface {
@@ -133,7 +121,7 @@ type DriverHandle interface {
 	Kill() error
 
 	// RunCheck runs a check and returns the result
-	RunCheck(checkID string) (*CheckResult, error)
+	RunCheck(checkID string) (*cstructs.CheckResult, error)
 }
 
 // ExecContext is shared between drivers within an allocation

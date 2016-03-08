@@ -237,3 +237,13 @@ func getCgroupManager(groups *cgroupConfig.Cgroup) cgroups.Manager {
 	}
 	return manager
 }
+
+func (e *ExecScriptCheck) setChroot(cmd *exec.Cmd) {
+	if e.FSIsolation {
+		if cmd.SysProcAttr == nil {
+			cmd.SysProcAttr = syscall.SysProcAttr{}
+		}
+		cmd.SysProcAttr.Chroot = e.taskDir
+		cmd.Dir = "/"
+	}
+}

@@ -38,7 +38,6 @@ type rawExecHandle struct {
 	version      string
 	pluginClient *plugin.Client
 	userPid      int
-	checks       map[string]Check
 	executor     executor.Executor
 	killTimeout  time.Duration
 	allocDir     *allocdir.AllocDir
@@ -63,6 +62,10 @@ func (d *RawExecDriver) Fingerprint(cfg *config.Config, node *structs.Node) (boo
 	}
 
 	return false, nil
+}
+
+func (e *RawExecDriver) SupportedChecks() []string {
+	return []string{"script"}
 }
 
 func (d *RawExecDriver) Start(ctx *ExecContext, task *structs.Task) (DriverHandle, error) {
@@ -236,12 +239,8 @@ func (h *rawExecHandle) Kill() error {
 }
 
 // RunCheck runs a check with a specific ID and returns the check result
-func (h *rawExecHandle) RunCheck(checkID string) (*CheckResult, error) {
-	ch, ok := h.checks[checkID]
-	if !ok {
-		return nil, fmt.Errorf("error retreiving check with ID: %v", checkID)
-	}
-	return ch.Run()
+func (h *rawExecHandle) RunCheck(checkID string) (*cstructs.CheckResult, error) {
+	return h.executor.RunCheck(checkID)
 }
 
 func (h *rawExecHandle) run() {

@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/armon/circbuf"
 	"github.com/hashicorp/go-multierror"
 	cgroupConfig "github.com/opencontainers/runc/libcontainer/configs"
 
@@ -21,6 +22,48 @@ import (
 	cstructs "github.com/hashicorp/nomad/client/driver/structs"
 	"github.com/hashicorp/nomad/nomad/structs"
 )
+
+type ExecScriptCheck struct {
+	cmd  string
+	args []string
+
+	ctx         *ExecutorContext
+	FSIsolation bool
+}
+
+func (e *ExecScriptCheck) Run() (*cstructs.CheckResult, error) {
+	buf, _ := circbuf.NewBuffer(int64(cstructs.CheckBufSize))
+	cmd := exec.Command(e.cmd, e.args...)
+	cmd.Stdout = buf
+	cmd.Stderr = buf
+	e.setChroot(cmd)
+	ts := time.Now()
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- cmd.Wait()
+	}()
+	for {
+		select {
+		case err := <-errCh:
+			if err == nil {
+				return &cstructs.CheckResult{ExitCode: 0, Output: string(buf.Bytes()), Timestamp: ts}, nil
+			}
+			exitCode := 1
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+					exitCode = status.ExitStatus()
+				}
+			}
+			return &cstructs.CheckResult{ExitCode: exitCode, Output: string(buf.Bytes()), Timestamp: ts}, nil
+		case <-time.After(30 * time.Second):
+			errCh <- fmt.Errorf("timed out after waiting 30s")
+		}
+	}
+	return nil, nil
+}
 
 // ExecutorContext holds context to configure the command user
 // wants to run and isolate it
@@ -78,14 +121,16 @@ type Executor interface {
 	ShutDown() error
 	Exit() error
 	UpdateLogConfig(logConfig *structs.LogConfig) error
+	RunCheck(checkID string) (*cstructs.CheckResult, error)
 }
 
 // UniversalExecutor is an implementation of the Executor which launches and
 // supervises processes. In addition to process supervision it provides resource
 // and file system isolation
 type UniversalExecutor struct {
-	cmd exec.Cmd
-	ctx *ExecutorContext
+	cmd    exec.Cmd
+	ctx    *ExecutorContext
+	checks map[string]cstructs.Check
 
 	taskDir       string
 	groups        *cgroupConfig.Cgroup
@@ -107,7 +152,6 @@ func NewExecutor(logger *log.Logger) Executor {
 // applies isolation on certain platforms.
 func (e *UniversalExecutor) LaunchCmd(command *ExecCommand, ctx *ExecutorContext) (*ProcessState, error) {
 	e.logger.Printf("[DEBUG] executor: launching command %v %v", command.Cmd, strings.Join(command.Args, " "))
-
 	e.ctx = ctx
 
 	// configuring the task dir
@@ -279,4 +323,13 @@ func (e *UniversalExecutor) configureTaskDir() error {
 	}
 	e.cmd.Dir = taskDir
 	return nil
+}
+
+func (e *UniversalExecutor) RunCheck(checkID string) (*cstructs.CheckResult, error) {
+	check, ok := e.checks[checkID].(*ExecScriptCheck)
+	if !ok {
+		return nil, fmt.Errorf("error retreiving check with ID: %v", check)
+	}
+
+	return check.Run()
 }

@@ -63,7 +63,7 @@ type rktHandle struct {
 	killTimeout  time.Duration
 	waitCh       chan *cstructs.WaitResult
 	doneCh       chan struct{}
-	checks       map[string]Check
+	checks       map[string]cstructs.Check
 }
 
 // rktPID is a struct to map the pid running the process to the vm image on
@@ -111,6 +111,10 @@ func (d *RktDriver) Fingerprint(cfg *config.Config, node *structs.Node) (bool, e
 		node.Attributes["driver.rkt"] = "0"
 	}
 	return true, nil
+}
+
+func (e *RktDriver) SupportedChecks() []string {
+	return []string{"script"}
 }
 
 // Run an existing Rkt image.
@@ -294,7 +298,7 @@ func (h *rktHandle) ID() string {
 }
 
 // RunCheck runs a check with a specific ID and returns the check result
-func (h *rktHandle) RunCheck(checkID string) (*CheckResult, error) {
+func (h *rktHandle) RunCheck(checkID string) (*cstructs.CheckResult, error) {
 	ch, ok := h.checks[checkID]
 	if !ok {
 		return nil, fmt.Errorf("error retreiving check with ID: %v", checkID)

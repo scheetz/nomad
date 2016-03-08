@@ -104,7 +104,7 @@ type DockerHandle struct {
 	logCollector     logging.LogCollector
 	client           *docker.Client
 	logger           *log.Logger
-	checks           map[string]Check
+	checks           map[string]cstructs.Check
 	cleanupContainer bool
 	cleanupImage     bool
 	imageID          string
@@ -122,7 +122,7 @@ type DockerScriptCheck struct {
 	containerID  string
 }
 
-func (d *DockerScriptCheck) Run() (*CheckResult, error) {
+func (d *DockerScriptCheck) Run() (*cstructs.CheckResult, error) {
 	execOpts := docker.CreateExecOptions{
 		AttachStdin:  false,
 		AttachStdout: true,
@@ -141,7 +141,7 @@ func (d *DockerScriptCheck) Run() (*CheckResult, error) {
 		return nil, err
 	}
 
-	output, _ := circbuf.NewBuffer(int64(CheckBufSize))
+	output, _ := circbuf.NewBuffer(int64(cstructs.CheckBufSize))
 	startOpts := docker.StartExecOptions{
 		Detach:       false,
 		Tty:          false,
@@ -155,7 +155,7 @@ func (d *DockerScriptCheck) Run() (*CheckResult, error) {
 	if execRes, err = d.dockerClient.InspectExec(exec.ID); err != nil {
 		return nil, err
 	}
-	return &CheckResult{
+	return &cstructs.CheckResult{
 		ExitCode:  execRes.ExitCode,
 		Output:    string(output.Bytes()),
 		Timestamp: time,
@@ -759,6 +759,10 @@ func (d *DockerDriver) Open(ctx *ExecContext, handleID string) (DriverHandle, er
 	return h, nil
 }
 
+func (d *DockerDriver) SupportedChecks() []string {
+	return []string{"script"}
+}
+
 func (h *DockerHandle) ID() string {
 	// Return a handle to the PID
 	pid := dockerPID{
@@ -780,7 +784,7 @@ func (h *DockerHandle) ContainerID() string {
 }
 
 // RunCheck runs a check with a specific ID and returns the check result
-func (h *DockerHandle) RunCheck(checkID string) (*CheckResult, error) {
+func (h *DockerHandle) RunCheck(checkID string) (*cstructs.CheckResult, error) {
 	ch, ok := h.checks[checkID]
 	if !ok {
 		return nil, fmt.Errorf("error retreiving check with ID: %v", checkID)

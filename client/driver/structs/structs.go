@@ -2,6 +2,7 @@ package structs
 
 import (
 	"fmt"
+	"time"
 
 	cgroupConfig "github.com/opencontainers/runc/libcontainer/configs"
 )
@@ -11,6 +12,21 @@ type WaitResult struct {
 	ExitCode int
 	Signal   int
 	Err      error
+}
+
+// CheckResult encapsulates the result of a check
+type CheckResult struct {
+	ExitCode  int // ExitCode is the exit code of the check
+	Output    string
+	Timestamp time.Time
+}
+
+// CheckBufSize is the size of the check output result
+var CheckBufSize = 4 * 1024
+
+// Check is a handle for running a health check
+type Check interface {
+	Run() (*CheckResult, error)
 }
 
 func NewWaitResult(code, signal int, err error) *WaitResult {
