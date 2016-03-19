@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	cgroupConfig "github.com/opencontainers/runc/libcontainer/configs"
+	"github.com/shirou/gopsutil/process"
 
 	"github.com/hashicorp/nomad/client/allocdir"
 	"github.com/hashicorp/nomad/client/driver/env"
@@ -33,6 +34,7 @@ type Executor interface {
 	Exit() error
 	UpdateLogConfig(logConfig *structs.LogConfig) error
 	UpdateTask(task *structs.Task) error
+	ResourceStats() (*cstructs.TaskResourceStats, error)
 }
 
 // ExecutorContext holds context to configure the command user
@@ -315,6 +317,26 @@ func (e *UniversalExecutor) ShutDown() error {
 		return fmt.Errorf("executor.shutdown error: %v", err)
 	}
 	return nil
+}
+
+func (e *UniversalExecutor) ResourceStats() (*cstructs.TaskResourceStats, error) {
+	p, err := process.NewProcess(int32(e.cmd.Process.Pid))
+	if err != nil {
+		return nil, err
+	}
+	cpuStats, err := p.CPUTimes()
+	if err != nil {
+		return nil, err
+	}
+	stats := &cstructs.TaskResourceStats{
+		CPUStats: &cstructs.CPUStats{
+			CPU:    cpuStats.CPU,
+			User:   cpuStats.User,
+			System: cpuStats.System,
+			Idle:   cpuStats.Idle,
+		},
+	}
+	return stats, nil
 }
 
 // configureTaskDir sets the task dir in the executor

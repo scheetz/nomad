@@ -60,3 +60,14 @@ func NewRecoverableError(e error, recoverable bool) *RecoverableError {
 func (r *RecoverableError) Error() string {
 	return r.Err.Error()
 }
+
+type CPUStats struct {
+	CPU    string
+	User   float64
+	System float64
+	Idle   float64
+}
+
+type TaskResourceStats struct {
+	CPUStats *CPUStats
+}

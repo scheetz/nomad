@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/nomad/client/driver/executor"
+	cstructs "github.com/hashicorp/nomad/client/driver/structs"
 	"github.com/hashicorp/nomad/nomad/structs"
 )
 
@@ -67,6 +68,12 @@ func (e *ExecutorRPC) UpdateTask(task *structs.Task) error {
 	return e.client.Call("Plugin.UpdateTask", task, new(interface{}))
 }
 
+func (e *ExecutorRPC) ResourceStats() (*cstructs.TaskResourceStats, error) {
+	var stats cstructs.TaskResourceStats
+	err := e.client.Call("Plugin.ResourceStats", new(interface{}), &stats)
+	return &stats, err
+}
+
 type ExecutorRPCServer struct {
 	Impl executor.Executor
 }
@@ -109,6 +116,14 @@ func (e *ExecutorRPCServer) UpdateLogConfig(args *structs.LogConfig, resp *inter
 
 func (e *ExecutorRPCServer) UpdateTask(args *structs.Task, resp *interface{}) error {
 	return e.Impl.UpdateTask(args)
+}
+
+func (e *ExecutorRPCServer) ResourceStats(args interface{}, reply *cstructs.TaskResourceStats) error {
+	stats, err := e.Impl.ResourceStats()
+	if stats != nil {
+		*reply = *stats
+	}
+	return err
 }
 
 type ExecutorPlugin struct {

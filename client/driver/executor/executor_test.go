@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,11 +12,11 @@ import (
 
 	"github.com/hashicorp/nomad/client/allocdir"
 	"github.com/hashicorp/nomad/client/driver/env"
+	cstructs "github.com/hashicorp/nomad/client/driver/structs"
 	"github.com/hashicorp/nomad/client/testutil"
 	"github.com/hashicorp/nomad/nomad/mock"
 	"github.com/hashicorp/nomad/nomad/structs"
 	tu "github.com/hashicorp/nomad/testutil"
-	cstructs "github.com/hashicorp/nomad/client/driver/structs"
 )
 
 var (
@@ -231,4 +232,38 @@ func TestExecutor_Start_Kill(t *testing.T) {
 	if act != expected {
 		t.Fatalf("Command output incorrectly: want %v; got %v", expected, act)
 	}
+}
+
+func TestExecutor_ResourceStats(t *testing.T) {
+	testutil.ExecCompatible(t)
+
+	execCmd := ExecCommand{Cmd: "/bin/bash", Args: []string{"-c", "/usr/bin/yes"}}
+	ctx := testExecutorContext(t)
+	ctx.Task.LogConfig.MaxFiles = 1
+	ctx.Task.LogConfig.MaxFileSizeMB = 300
+	defer ctx.AllocDir.Destroy()
+
+	execCmd.FSIsolation = true
+	execCmd.ResourceLimits = true
+	execCmd.User = "nobody"
+
+	executor := NewExecutor(log.New(os.Stdout, "", log.LstdFlags))
+	ps, err := executor.LaunchCmd(&execCmd, ctx)
+	if err != nil {
+		t.Fatalf("error in launching command: %v", err)
+	}
+	if ps.Pid == 0 {
+		t.Fatalf("expected process to start and have non zero pid")
+	}
+	time.Sleep(200 * time.Millisecond)
+	stats, serr := executor.ResourceStats()
+	if err := executor.Exit(); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	if serr != nil {
+		t.Fatalf("err: %v", serr)
+	}
+
+	fmt.Printf("DIPTANU STATS %v", stats)
 }
