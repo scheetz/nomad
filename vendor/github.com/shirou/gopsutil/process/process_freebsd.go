@@ -5,9 +5,9 @@ package process
 import (
 	"bytes"
 	"encoding/binary"
-	"unsafe"
 	"strings"
 	"syscall"
+	"unsafe"
 
 	cpu "github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/internal/common"
@@ -54,6 +54,7 @@ func (p *Process) Name() (string, error) {
 func (p *Process) Exe() (string, error) {
 	return "", common.NotImplementedError
 }
+
 func (p *Process) Cmdline() (string, error) {
 	mib := []int32{CTLKern, KernProc, KernProcArgs, p.Pid}
 	buf, _, err := common.CallSyscall(mib)
@@ -68,6 +69,27 @@ func (p *Process) Cmdline() (string, error) {
 	})
 
 	return strings.Join(ret, " "), nil
+}
+
+func (p *Process) CmdlineSlice() ([]string, error) {
+	mib := []int32{CTLKern, KernProc, KernProcArgs, p.Pid}
+	buf, _, err := common.CallSyscall(mib)
+	if err != nil {
+		return nil, err
+	}
+	if len(buf) == 0 {
+		return nil, nil
+	}
+	if buf[len(buf)-1] == 0 {
+		buf = buf[:len(buf)-1]
+	}
+	parts := bytes.Split(buf, []byte{0})
+	var strParts []string
+	for _, p := range parts {
+		strParts = append(strParts, string(p))
+	}
+
+	return strParts, nil
 }
 func (p *Process) CreateTime() (int64, error) {
 	return 0, common.NotImplementedError
@@ -185,7 +207,7 @@ func (p *Process) MemoryInfo() (*MemoryInfoStat, error) {
 	if err != nil {
 		return nil, err
 	}
-	pageSize := binary.LittleEndian.Uint16([]byte(v))
+	pageSize := common.LittleEndian.Uint16([]byte(v))
 
 	return &MemoryInfoStat{
 		RSS: uint64(k.KiRssize) * uint64(pageSize),
@@ -194,9 +216,6 @@ func (p *Process) MemoryInfo() (*MemoryInfoStat, error) {
 }
 func (p *Process) MemoryInfoEx() (*MemoryInfoExStat, error) {
 	return nil, common.NotImplementedError
-}
-func (p *Process) MemoryPercent() (float32, error) {
-	return 0, common.NotImplementedError
 }
 
 func (p *Process) Children() ([]*Process, error) {
@@ -220,6 +239,10 @@ func (p *Process) OpenFiles() ([]OpenFilesStat, error) {
 }
 
 func (p *Process) Connections() ([]net.NetConnectionStat, error) {
+	return nil, common.NotImplementedError
+}
+
+func (p *Process) NetIOCounters(pernic bool) ([]net.NetIOCountersStat, error) {
 	return nil, common.NotImplementedError
 }
 

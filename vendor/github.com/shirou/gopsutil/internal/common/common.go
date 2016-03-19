@@ -186,7 +186,7 @@ func mustParseFloat64(val string) float64 {
 	return vv
 }
 
-// StringsHas checks the target string slice containes src or not
+// StringsHas checks the target string slice contains src or not
 func StringsHas(target []string, src string) bool {
 	for _, t := range target {
 		if strings.TrimSpace(t) == src {
@@ -200,6 +200,16 @@ func StringsHas(target []string, src string) bool {
 func StringsContains(target []string, src string) bool {
 	for _, t := range target {
 		if strings.Contains(t, src) {
+			return true
+		}
+	}
+	return false
+}
+
+// IntContains checks the src in any int of the target int slice.
+func IntContains(target []int, src int) bool {
+	for _, t := range target {
+		if src == t {
 			return true
 		}
 	}
@@ -236,7 +246,7 @@ func PathExists(filename string) bool {
 	return false
 }
 
-//GetEnv retreives the environment variable key. If it does not exist it returns the default.
+//GetEnv retrieves the environment variable key. If it does not exist it returns the default.
 func GetEnv(key string, dfault string, combineWith ...string) string {
 	value := os.Getenv(key)
 	if value == "" {
@@ -263,4 +273,8 @@ func HostProc(combineWith ...string) string {
 
 func HostSys(combineWith ...string) string {
 	return GetEnv("HOST_SYS", "/sys", combineWith...)
+}
+
+func HostEtc(combineWith ...string) string {
+	return GetEnv("HOST_ETC", "/etc", combineWith...)
 }

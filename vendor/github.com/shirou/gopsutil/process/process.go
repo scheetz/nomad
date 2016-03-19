@@ -7,6 +7,7 @@ import (
 
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/internal/common"
+	"github.com/shirou/gopsutil/mem"
 )
 
 var invoke common.Invoker
@@ -106,44 +107,60 @@ func PidExists(pid int32) (bool, error) {
 // If interval is 0, return difference from last call(non-blocking).
 // If interval > 0, wait interval sec and return diffrence between start and end.
 func (p *Process) CPUPercent(interval time.Duration) (float64, error) {
-	numcpu := runtime.NumCPU()
-	calculate := func(t1, t2 *cpu.CPUTimesStat, delta float64) float64 {
-		if delta == 0 {
-			return 0
-		}
-		delta_proc := (t2.User - t1.User) + (t2.System - t1.System)
-		overall_percent := ((delta_proc / delta) * 100) * float64(numcpu)
-		return overall_percent
-	}
-
 	cpuTimes, err := p.CPUTimes()
 	if err != nil {
 		return 0, err
 	}
+	now := time.Now()
 
 	if interval > 0 {
 		p.lastCPUTimes = cpuTimes
-		p.lastCPUTime = time.Now()
+		p.lastCPUTime = now
 		time.Sleep(interval)
 		cpuTimes, err = p.CPUTimes()
+		now = time.Now()
 		if err != nil {
 			return 0, err
 		}
 	} else {
 		if p.lastCPUTimes == nil {
 			// invoked first time
-			p.lastCPUTimes, err = p.CPUTimes()
-			if err != nil {
-				return 0, err
-			}
-			p.lastCPUTime = time.Now()
+			p.lastCPUTimes = cpuTimes
+			p.lastCPUTime = now
 			return 0, nil
 		}
 	}
 
-	delta := (time.Now().Sub(p.lastCPUTime).Seconds()) * float64(numcpu)
-	ret := calculate(p.lastCPUTimes, cpuTimes, float64(delta))
+	numcpu := runtime.NumCPU()
+	delta := (now.Sub(p.lastCPUTime).Seconds()) * float64(numcpu)
+	ret := calculatePercent(p.lastCPUTimes, cpuTimes, delta, numcpu)
 	p.lastCPUTimes = cpuTimes
-	p.lastCPUTime = time.Now()
+	p.lastCPUTime = now
 	return ret, nil
+}
+
+func calculatePercent(t1, t2 *cpu.CPUTimesStat, delta float64, numcpu int) float64 {
+	if delta == 0 {
+		return 0
+	}
+	delta_proc := t2.Total() - t1.Total()
+	overall_percent := ((delta_proc / delta) * 100) * float64(numcpu)
+	return overall_percent
+}
+
+// MemoryPercent returns how many percent of the total RAM this process uses
+func (p *Process) MemoryPercent() (float32, error) {
+	machineMemory, err := mem.VirtualMemory()
+	if err != nil {
+		return 0, err
+	}
+	total := machineMemory.Total
+
+	processMemory, err := p.MemoryInfo()
+	if err != nil {
+		return 0, err
+	}
+	used := processMemory.RSS
+
+	return (100 * float32(used) / float32(total)), nil
 }

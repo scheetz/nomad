@@ -4,7 +4,9 @@ package process
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
@@ -79,12 +81,28 @@ func (p *Process) Name() (string, error) {
 func (p *Process) Exe() (string, error) {
 	return "", common.NotImplementedError
 }
+
+// Cmdline returns the command line arguments of the process as a string with
+// each argument separated by 0x20 ascii character.
 func (p *Process) Cmdline() (string, error) {
 	r, err := callPs("command", p.Pid, false)
 	if err != nil {
 		return "", err
 	}
 	return strings.Join(r[0], " "), err
+}
+
+// CmdlineSlice returns the command line arguments of the process as a slice with each
+// element being an argument. Because of current deficiencies in the way that the command
+// line arguments are found, single arguments that have spaces in the will actually be
+// reported as two separate items. In order to do something better CGO would be needed
+// to use the native darwin functions.
+func (p *Process) CmdlineSlice() ([]string, error) {
+	r, err := callPs("command", p.Pid, false)
+	if err != nil {
+		return nil, err
+	}
+	return r[0], err
 }
 func (p *Process) CreateTime() (int64, error) {
 	return 0, common.NotImplementedError
@@ -124,11 +142,10 @@ func (p *Process) Uids() ([]int32, error) {
 		return nil, err
 	}
 
-	uids := make([]int32, 0, 3)
+	// See: http://unix.superglobalmegacorp.com/Net2/newsrc/sys/ucred.h.html
+	userEffectiveUID := int32(k.Eproc.Ucred.Uid)
 
-	uids = append(uids, int32(k.Eproc.Pcred.P_ruid), int32(k.Eproc.Ucred.Uid), int32(k.Eproc.Pcred.P_svuid))
-
-	return uids, nil
+	return []int32{userEffectiveUID}, nil
 }
 func (p *Process) Gids() ([]int32, error) {
 	k, err := p.getKProc()
@@ -273,9 +290,6 @@ func (p *Process) MemoryInfo() (*MemoryInfoStat, error) {
 func (p *Process) MemoryInfoEx() (*MemoryInfoExStat, error) {
 	return nil, common.NotImplementedError
 }
-func (p *Process) MemoryPercent() (float32, error) {
-	return 0, common.NotImplementedError
-}
 
 func (p *Process) Children() ([]*Process, error) {
 	pids, err := common.CallPgrep(invoke, p.Pid)
@@ -299,6 +313,10 @@ func (p *Process) OpenFiles() ([]OpenFilesStat, error) {
 
 func (p *Process) Connections() ([]net.NetConnectionStat, error) {
 	return net.NetConnectionsPid("all", p.Pid)
+}
+
+func (p *Process) NetIOCounters(pernic bool) ([]net.NetIOCountersStat, error) {
+	return nil, common.NotImplementedError
 }
 
 func (p *Process) IsRunning() (bool, error) {
@@ -358,7 +376,7 @@ func parseKinfoProc(buf []byte) (KinfoProc, error) {
 	var k KinfoProc
 	br := bytes.NewReader(buf)
 
-	err := Read(br, LittleEndian, &k)
+	err := common.Read(br, binary.LittleEndian, &k)
 	if err != nil {
 		return k, err
 	}
@@ -366,6 +384,8 @@ func parseKinfoProc(buf []byte) (KinfoProc, error) {
 	return k, nil
 }
 
+// Returns a proc as defined here:
+// http://unix.superglobalmegacorp.com/Net2/newsrc/sys/kinfo_proc.h.html
 func (p *Process) getKProc() (*KinfoProc, error) {
 	mib := []int32{CTLKern, KernProc, KernProcPID, p.Pid}
 	procK := KinfoProc{}
@@ -401,15 +421,20 @@ func NewProcess(pid int32) (*Process, error) {
 // And splited by Space. Caller have responsibility to manage.
 // If passed arg pid is 0, get information from all process.
 func callPs(arg string, pid int32, threadOption bool) ([][]string, error) {
+	bin, err := exec.LookPath("ps")
+	if err != nil {
+		return [][]string{}, err
+	}
+
 	var cmd []string
 	if pid == 0 { // will get from all processes.
-		cmd = []string{"-x", "-o", arg}
+		cmd = []string{"-ax", "-o", arg}
 	} else if threadOption {
 		cmd = []string{"-x", "-o", arg, "-M", "-p", strconv.Itoa(int(pid))}
 	} else {
 		cmd = []string{"-x", "-o", arg, "-p", strconv.Itoa(int(pid))}
 	}
-	out, err := invoke.Command("/bin/ps", cmd...)
+	out, err := invoke.Command(bin, cmd...)
 	if err != nil {
 		return [][]string{}, err
 	}

@@ -455,33 +455,33 @@
 		},
 		{
 			"ImportPath": "github.com/shirou/gopsutil/cpu",
-			"Comment": "1.0.0-230-gf58654f",
-			"Rev": "f58654fa1c30aab9b8c503ecea4922e80abcd2bf"
+			"Comment": "1.0.0-320-g1f32ce1",
+			"Rev": "1f32ce1bb380845be7f5d174ac641a2c592c0c42"
 		},
 		{
 			"ImportPath": "github.com/shirou/gopsutil/host",
-			"Comment": "1.0.0-230-gf58654f",
-			"Rev": "f58654fa1c30aab9b8c503ecea4922e80abcd2bf"
+			"Comment": "1.0.0-320-g1f32ce1",
+			"Rev": "1f32ce1bb380845be7f5d174ac641a2c592c0c42"
 		},
 		{
 			"ImportPath": "github.com/shirou/gopsutil/internal/common",
-			"Comment": "1.0.0-230-gf58654f",
-			"Rev": "f58654fa1c30aab9b8c503ecea4922e80abcd2bf"
+			"Comment": "1.0.0-320-g1f32ce1",
+			"Rev": "1f32ce1bb380845be7f5d174ac641a2c592c0c42"
 		},
 		{
 			"ImportPath": "github.com/shirou/gopsutil/mem",
-			"Comment": "1.0.0-230-gf58654f",
-			"Rev": "f58654fa1c30aab9b8c503ecea4922e80abcd2bf"
+			"Comment": "1.0.0-320-g1f32ce1",
+			"Rev": "1f32ce1bb380845be7f5d174ac641a2c592c0c42"
 		},
 		{
 			"ImportPath": "github.com/shirou/gopsutil/net",
-			"Comment": "1.0.0-230-gf58654f",
-			"Rev": "f58654fa1c30aab9b8c503ecea4922e80abcd2bf"
+			"Comment": "1.0.0-320-g1f32ce1",
+			"Rev": "1f32ce1bb380845be7f5d174ac641a2c592c0c42"
 		},
 		{
 			"ImportPath": "github.com/shirou/gopsutil/process",
-			"Comment": "1.0.0-230-gf58654f",
-			"Rev": "f58654fa1c30aab9b8c503ecea4922e80abcd2bf"
+			"Comment": "1.0.0-320-g1f32ce1",
+			"Rev": "1f32ce1bb380845be7f5d174ac641a2c592c0c42"
 		},
 		{
 			"ImportPath": "github.com/shirou/w32",

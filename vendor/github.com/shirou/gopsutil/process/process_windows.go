@@ -5,6 +5,7 @@ package process
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"syscall"
 	"time"
 	"unsafe"
@@ -12,8 +13,8 @@ import (
 	"github.com/StackExchange/wmi"
 	"github.com/shirou/w32"
 
-	"github.com/shirou/gopsutil/internal/common"
 	cpu "github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/internal/common"
 	net "github.com/shirou/gopsutil/net"
 )
 
@@ -145,6 +146,17 @@ func (p *Process) Cmdline() (string, error) {
 	return *dst[0].CommandLine, nil
 }
 
+// CmdlineSlice returns the command line arguments of the process as a slice with each
+// element being an argument. This merely returns the CommandLine informations passed
+// to the process split on the 0x20 ASCII character.
+func (p *Process) CmdlineSlice() ([]string, error) {
+	cmdline, err := p.Cmdline()
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(cmdline, " "), nil
+}
+
 func (p *Process) CreateTime() (int64, error) {
 	dst, err := GetWin32Proc(p.Pid)
 	if err != nil {
@@ -227,9 +239,6 @@ func (p *Process) MemoryInfo() (*MemoryInfoStat, error) {
 func (p *Process) MemoryInfoEx() (*MemoryInfoExStat, error) {
 	return nil, common.NotImplementedError
 }
-func (p *Process) MemoryPercent() (float32, error) {
-	return 0, common.NotImplementedError
-}
 
 func (p *Process) Children() ([]*Process, error) {
 	return nil, common.NotImplementedError
@@ -240,6 +249,10 @@ func (p *Process) OpenFiles() ([]OpenFilesStat, error) {
 }
 
 func (p *Process) Connections() ([]net.NetConnectionStat, error) {
+	return nil, common.NotImplementedError
+}
+
+func (p *Process) NetIOCounters(pernic bool) ([]net.NetIOCountersStat, error) {
 	return nil, common.NotImplementedError
 }
 
